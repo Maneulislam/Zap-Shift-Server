@@ -4,6 +4,8 @@ const app = express()
 const dotenv = require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 3000
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
+
 
 
 
@@ -52,6 +54,13 @@ async function run() {
 
         })
 
+        app.get('/parcels/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await parcelsCollections.findOne(query);
+            res.send(result);
+        });
+
 
         app.post('/parcels', async (req, res) => {
             const parcel = req.body;
@@ -69,6 +78,36 @@ async function run() {
             const result = await parcelsCollections.deleteOne(query);
             res.send(result)
         })
+
+
+
+        // Stripe payment
+
+        app.post('/create-checkout-session', async (req, res) => {
+            const paymentInfo = req.body;
+            const session = await stripe.checkout.sessions.create({
+                line_items: [
+                    {
+                        // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+                        price_data: {
+                            currency: "USD",
+                            unit_amount: '1500',
+                            product_data: {
+                                name: paymentInfo.productName
+                            }
+                        },
+                        quantity: 1,
+                    },
+                ],
+                customer_email: paymentInfo.senderEmail,
+                mode: 'payment',
+                success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success`,
+                // Provide a name (for example, hosted_web_0001) to label this Checkout integration and measure its conversion independently
+                integration_identifier: '{{INTEGRATION_ID}}',
+            });
+
+            res.redirect(303, session.url);
+        });
 
 
 

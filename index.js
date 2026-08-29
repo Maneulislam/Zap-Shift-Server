@@ -141,6 +141,22 @@ async function run() {
             const session = await stripe.checkout.sessions.retrieve(sessionId);
             console.log("Session retrieve", session);
 
+
+            // Duplicate payment off
+            const transactionId = session.payment_intent;
+            const query = { transactionId: transactionId }
+
+            const existingPayment = await paymentCollection.findOne(query);
+
+            if (existingPayment) {
+                return res.send({
+                    success: true,
+                    message: 'Payment already processed',
+                    trackingId: existingPayment.trackingId,
+                    transactionId
+                });
+            }
+
             if (session.payment_status === 'paid') {
                 const id = session.metadata.parcelId;
                 const query = { _id: new ObjectId(id) };
@@ -163,7 +179,8 @@ async function run() {
                     parcelName: session.metadata.parcelName,
                     transactionId: session.payment_intent,
                     paymentStatus: session.payment_status,
-                    paidAt: new Date()
+                    paidAt: new Date(),
+                    trackingId: trackingId
                 }
 
                 if (session.payment_status === 'paid') {

@@ -6,6 +6,16 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 3000
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 const crypto = require("crypto");
+const { initializeApp, cert } = require("firebase-admin/app");
+
+const serviceAccount = require("./zap-shift-firebase-adminsdk.json");
+const { getAuth } = require('firebase-admin/auth');
+
+initializeApp({
+    credential: cert(serviceAccount)
+});
+
+
 
 const generateTrackingId = () => {
     const date = new Date();
@@ -29,6 +39,32 @@ const generateTrackingId = () => {
 app.use(express.json());
 app.use(cors());
 
+const verifyFbToken = async (req, res, next) => {
+
+    const token = req.headers.authorization;
+
+    if (!token) {
+        return res.status(401).send({ message: 'Unauthorized access' });
+    }
+
+    try {
+        const tokenId = token.split(' ')[1];
+
+        const decoded = await getAuth().verifyIdToken(tokenId);
+
+        console.log("decoded token", decoded);
+
+        req.decoded_email = decoded.email;
+
+        next();
+    }
+    catch (error) {
+        console.log(error);
+
+        return res.status(401).send({ message: 'Unauthorized access' });
+    }
+};
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@simple-crud-server.awx9wzo.mongodb.net/?appName=simple-crud-server`;
 
@@ -49,8 +85,30 @@ async function run() {
         await client.connect();
 
         const db = client.db('zap_shift_db');
+
+        const userCollection = db.collection('users')
         const parcelsCollections = db.collection('parcels');
         const paymentCollection = db.collection('payment');
+
+
+
+        // User related apis
+
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            user.role = 'user';
+            user.createdAt = new Date();
+            const email = user.email;
+
+            const userExists = await userCollection.findOne({ email })
+
+            if (userExists) {
+                return res.send({ message: 'user already exists' });
+            }
+
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        })
 
 
         // Parcel API
@@ -132,7 +190,7 @@ async function run() {
         });
 
 
-        // Payment status
+        // Payment success status
 
         app.patch('/payment-success', async (req, res) => {
             const sessionId = req.query.session_id;
@@ -200,6 +258,28 @@ async function run() {
 
 
 
+        // payment related api
+
+        app.get('/payments', verifyFbToken, async (req, res) => {
+
+            const email = req.query.email;
+            const query = {};
+
+            console.log("Headers", req.headers);
+
+            if (email) {
+                query.customerEmail = email;
+
+                if (email !== req.decoded_email) {
+                    return res.status(403).send({ message: 'Forbidden' });
+                }
+            }
+
+            const cursor = paymentCollection.find(query).sort({ paidAt: -1 });
+            const result = await cursor.toArray();
+
+            res.send(result);
+        });
 
 
 

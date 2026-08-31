@@ -113,6 +113,16 @@ async function run() {
         })
 
 
+        app.get('/users', verifyFbToken, async (req, res) => {
+            const query = {};
+            const cursor = userCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
+
+
+
         // Parcel API
         app.get('/parcels', async (req, res) => {
 

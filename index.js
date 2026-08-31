@@ -296,17 +296,42 @@ async function run() {
         })
 
 
-        app.get('riders', async (req, re) => {
+        app.patch('/riders/:id', verifyFbToken, async (req, res) => {
+            const status = req.body.status;
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    status: status
+                }
+            }
+
+            const result = await riderCollection.updateOne(query, updateDoc);
+            res.send(result);
+
+
+        })
+
+
+        app.get('/riders', async (req, res) => {
             const query = {};
 
             if (req.query.status) {
                 query.status = req.query.status;
             }
 
-            const cursor = riderCollection.findOne(query);
+            const cursor = riderCollection.find(query);
             const result = await cursor.toArray();
             res.send(result);
 
+
+        })
+
+        app.delete('/riders/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await riderCollection.deleteOne(query);
+            res.send(result);
 
         })
 

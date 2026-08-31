@@ -139,6 +139,9 @@ async function run() {
         });
 
 
+
+
+
         app.post('/parcels', async (req, res) => {
             const parcel = req.body;
 
@@ -298,6 +301,7 @@ async function run() {
 
         app.patch('/riders/:id', verifyFbToken, async (req, res) => {
             const status = req.body.status;
+            const email = req.body.email;
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const updateDoc = {
@@ -307,6 +311,21 @@ async function run() {
             }
 
             const result = await riderCollection.updateOne(query, updateDoc);
+
+            if (status === 'approved') {
+                const email = req.body.email;
+                const userQuery = { email: email };
+                const updateInfo = {
+                    $set: {
+                        role: 'rider'
+                    }
+                }
+
+                const userResult = await riderCollection.updateOne(userQuery, updateInfo);
+
+            }
+
+
             res.send(result);
 
 
@@ -326,6 +345,16 @@ async function run() {
 
 
         })
+
+
+        app.get('/riders/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await riderCollection.findOne(query);
+            res.send(result);
+        });
+
+
 
         app.delete('/riders/:id', async (req, res) => {
             const id = req.params.id;

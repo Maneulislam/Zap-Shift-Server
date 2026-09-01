@@ -128,6 +128,10 @@ async function run() {
         })
 
 
+
+
+
+
         app.get('/users', verifyFbToken, async (req, res) => {
             const query = {};
             const cursor = userCollection.find(query);
@@ -346,7 +350,7 @@ async function run() {
                     }
                 }
 
-                const userResult = await riderCollection.updateOne(userQuery, updateInfo);
+                const userResult = await userCollection.updateOne(userQuery, updateInfo);
 
             }
 

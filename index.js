@@ -94,6 +94,28 @@ async function run() {
 
 
 
+
+
+
+        // Middle ware with database access
+        // must be used after verifyFbToken middleware
+
+        const verifyAdmin = async (req, res, next) => {
+
+            const email = req.decoded_email;
+            const query = { email };
+            const user = await userCollection.findOne(query);
+
+            if (!user || user.role !== 'admin') {
+                res.status(403).send({ message: 'Forbidden access' })
+            }
+
+            next();
+        }
+
+
+
+
         // User related apis
 
         app.post('/users', async (req, res) => {
@@ -113,7 +135,7 @@ async function run() {
         })
 
 
-        app.patch('/users/:id/role', async (req, res) => {
+        app.patch('/users/:id/role', verifyFbToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const roleInfo = req.body;
             const query = { _id: new ObjectId(id) };
@@ -332,7 +354,7 @@ async function run() {
         })
 
 
-        app.patch('/riders/:id', verifyFbToken, async (req, res) => {
+        app.patch('/riders/:id', verifyFbToken, verifyAdmin, async (req, res) => {
             const status = req.body.status;
             const email = req.body.email;
             const id = req.params.id;

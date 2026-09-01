@@ -113,6 +113,21 @@ async function run() {
         })
 
 
+        app.patch('/users/:id', async (req, res) => {
+            const id = req.params.id;
+            const roleInfo = req.body;
+            const query = { _id: new ObjectId(id) };
+
+            const updatedDoc = {
+                $set: {
+                    role: roleInfo.role
+                }
+            }
+            const result = await userCollection.updateOne(query, updatedDoc);
+            res.send(result);
+        })
+
+
         app.get('/users', verifyFbToken, async (req, res) => {
             const query = {};
             const cursor = userCollection.find(query);

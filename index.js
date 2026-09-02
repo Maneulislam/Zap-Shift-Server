@@ -159,8 +159,18 @@ async function run() {
 
 
         app.get('/users', verifyFbToken, async (req, res) => {
+            const search = req.query.search;
             const query = {};
-            const cursor = userCollection.find(query);
+
+            if (search) {
+
+                query.$or = [
+                    { displayName: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } }
+                ]
+            }
+
+            const cursor = userCollection.find(query).sort({ createdAt: -1 }).limit(5);
             const result = await cursor.toArray();
             res.send(result);
         })

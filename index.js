@@ -179,6 +179,7 @@ async function run() {
 
 
         // Parcels related API
+
         app.get('/parcels', async (req, res) => {
 
             const query = {};
@@ -199,6 +200,25 @@ async function run() {
             res.send(result)
 
         })
+
+        app.get('/parcels/rider', async (req, res) => {
+
+            const { riderEmail, deliveryStatus } = req.query;
+            const query = {};
+
+            if (riderEmail) {
+                query.riderEmail = riderEmail;
+            }
+
+            if (deliveryStatus) {
+                query.deliveryStatus = deliveryStatus;
+            }
+
+            const cursor = parcelsCollections.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
 
         app.get('/parcels/:id', async (req, res) => {
             const id = req.params.id;
@@ -447,7 +467,7 @@ async function run() {
                 query.workStatus = 'available';
             }
 
-            const cursor = riderCollection.find(query);
+            const cursor = riderCollection.find(query).sort({ createdAt: -1 });
             const result = await cursor.toArray();
             res.send(result);
 

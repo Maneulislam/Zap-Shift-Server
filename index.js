@@ -178,14 +178,18 @@ async function run() {
 
 
 
-        // Parcel API
+        // Parcels related API
         app.get('/parcels', async (req, res) => {
 
             const query = {};
-            const { email } = req.query;
+            const { email, deliveryStatus } = req.query;
 
             if (email) {
                 query.senderEmail = email;
+            }
+
+            if (deliveryStatus) {
+                query.deliveryStatus = deliveryStatus;
             }
 
             const options = { sort: { createdAt: - 1 } }
@@ -204,7 +208,35 @@ async function run() {
         });
 
 
+        app.patch('/parcels/:id', async (req, res) => {
+            const { riderId, riderName, riderEmail } = req.body;
+            const id = req.params.id;
 
+            const query = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    deliveryStatus: 'driver-assigned',
+                    riderId: riderId,
+                    riderEmail: riderEmail,
+                    riderName: riderName
+                }
+            }
+
+            const result = await parcelsCollections.updateOne(query, updatedDoc);
+            res.send(result);
+
+            const riderQuery = { _id: new ObjectId(riderId) };
+            const riderUpdatedDoc = {
+                $set: {
+                    workStatus: 'in-delivery',
+                }
+            }
+
+            const riderResult = await riderCollection.updateOne(riderQuery, riderUpdatedDoc);
+            res.send(riderResult);
+
+
+        })
 
 
         app.post('/parcels', async (req, res) => {
@@ -281,7 +313,7 @@ async function run() {
                     success: true,
                     message: 'Payment already processed',
                     trackingId: existingPayment.trackingId,
-                    transactionId
+                    transactionId: existingPayment.transactionId
                 });
             }
 
@@ -291,7 +323,9 @@ async function run() {
                 const update = {
                     $set: {
                         paymentStatus: 'paid',
+                        deliveryStatus: 'pending-pickup',
                         trackingId: trackingId,
+                        transactionId: transactionId
                     },
                 };
 
@@ -308,7 +342,8 @@ async function run() {
                     transactionId: session.payment_intent,
                     paymentStatus: session.payment_status,
                     paidAt: new Date(),
-                    trackingId: trackingId
+                    trackingId: trackingId,
+                    transactionId: transactionId
                 }
 
                 if (session.payment_status === 'paid') {
@@ -371,7 +406,8 @@ async function run() {
             const query = { _id: new ObjectId(id) };
             const updateDoc = {
                 $set: {
-                    status: status
+                    status: status,
+                    workStatus: 'available'
                 }
             }
 
@@ -399,9 +435,16 @@ async function run() {
 
         app.get('/riders', async (req, res) => {
             const query = {};
+            const { status, district, workStatus } = req.query;
 
-            if (req.query.status) {
-                query.status = req.query.status;
+            if (status) {
+                query.status = status;
+            }
+            if (district) {
+                query.district = district;
+            }
+            if (workStatus) {
+                query.workStatus = 'available';
             }
 
             const cursor = riderCollection.find(query);

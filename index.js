@@ -211,7 +211,7 @@ async function run() {
             }
 
             if (deliveryStatus) {
-                query.deliveryStatus = { $in: ['driver-assigned', 'rider-arriving'] };
+                query.deliveryStatus = { $nin: ['parcel-delivered'] };
             }
 
             const cursor = parcelsCollections.find(query);
@@ -260,7 +260,7 @@ async function run() {
 
 
         app.patch('/parcels/:id/status', async (req, res) => {
-            const { deliveryStatus } = req.body;
+            const { deliveryStatus, riderId } = req.body;
             const id = req.params.id;
 
             const query = { _id: new ObjectId(id) };
@@ -270,6 +270,32 @@ async function run() {
                     deliveryStatus: deliveryStatus
                 }
             }
+
+
+            if (deliveryStatus === 'rider-rejected') {
+                const riderQuery = { _id: new ObjectId(riderId) };
+                const riderUpdatedDoc = {
+                    $set: {
+                        workStatus: 'available',
+                    }
+                }
+                const riderResult = await riderCollection.updateOne(riderQuery, riderUpdatedDoc);
+
+            }
+
+
+            if (deliveryStatus === 'parcel-delivered') {
+                const riderQuery = { _id: new ObjectId(riderId) };
+                const riderUpdatedDoc = {
+                    $set: {
+                        workStatus: 'available',
+                    }
+                }
+                const riderResult = await riderCollection.updateOne(riderQuery, riderUpdatedDoc);
+
+            }
+
+
 
             const result = await parcelsCollections.updateOne(query, updatedDoc);
             res.send(result);

@@ -215,6 +215,31 @@ async function run() {
 
         })
 
+
+
+        app.get('/parcels/delivery-status/stats', async (req, res) => {
+            const pipeline = [
+                {
+                    $match: {
+                        deliveryStatus: { $ne: null }
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$deliveryStatus',
+                        count: { $sum: 1 },
+                        createdAt: { $first: '$createdAt' }
+                    }
+                }
+            ];
+
+            const result = await parcelsCollections.aggregate(pipeline).toArray();
+            res.send(result);
+        });
+
+
+
+
         app.get('/parcels/rider', async (req, res) => {
 
             const { riderEmail, deliveryStatus } = req.query;
@@ -231,7 +256,9 @@ async function run() {
                 query.deliveryStatus = deliveryStatus;
             }
 
-            const cursor = parcelsCollections.find(query);
+            const options = { sort: { createdAt: -1 } }
+
+            const cursor = parcelsCollections.find(query, options);
             const result = await cursor.toArray();
             res.send(result);
         })
@@ -245,6 +272,9 @@ async function run() {
         });
 
 
+
+
+
         app.patch('/parcels/:id', async (req, res) => {
             const { riderId, riderName, riderEmail, trackingId } = req.body;
             const id = req.params.id;
@@ -255,7 +285,7 @@ async function run() {
                     deliveryStatus: 'driver-assigned',
                     riderId: riderId,
                     riderEmail: riderEmail,
-                    riderName: riderName
+                    riderName: riderName,
                 }
             }
 
@@ -391,7 +421,7 @@ async function run() {
 
         app.patch('/payment-success', async (req, res) => {
             const sessionId = req.query.session_id;
-            const trackingId = session.metadata.trackingId;
+
 
             const session = await stripe.checkout.sessions.retrieve(sessionId);
             console.log("Session retrieve", session);
@@ -411,6 +441,12 @@ async function run() {
                     transactionId: existingPayment.transactionId
                 });
             }
+
+
+
+            const trackingId = session.metadata.trackingId;
+
+
 
             if (session.payment_status === 'paid') {
                 const id = session.metadata.parcelId;
@@ -456,7 +492,7 @@ async function run() {
 
             }
 
-            res.send({ success: false })
+            return res.send({ success: false })
 
 
         })
@@ -496,6 +532,23 @@ async function run() {
 
             const result = await riderCollection.insertOne(riders);
             res.send(result)
+        })
+
+
+        app.get('/riders/delivery-per-day', async (req, res) => {
+            const email = req.query.email;
+
+            const pipeline = [
+                {
+                    $match: {
+                        riderEmail: email,
+                        deliveryStatus: "parcel-delivered"
+                    }
+                }
+            ]
+
+            const result = await parcelsCollections.aggregate(pipeline).toArray();
+            res.send(result);
         })
 
 

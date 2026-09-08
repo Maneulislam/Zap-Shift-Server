@@ -217,7 +217,7 @@ async function run() {
 
 
 
-        app.get('/parcels/delivery-status/stats', async (req, res) => {
+        app.get('/parcels/delivery-status/stats', verifyFbToken, verifyAdmin, async (req, res) => {
             const pipeline = [
                 {
                     $match: {
@@ -544,7 +544,45 @@ async function run() {
                         riderEmail: email,
                         deliveryStatus: "parcel-delivered"
                     }
-                }
+                },
+
+                {
+                    $lookup: {
+                        from: 'trackings',
+                        localField: 'trackingId',
+                        foreignField: 'trackingId',
+                        as: 'parcel-trackings'
+                    }
+                },
+
+                {
+                    $unwind: '$parcel-trackings'
+                },
+                {
+                    $match: {
+                        "parcel-trackings.status": 'parcel-delivered'
+                    }
+                },
+
+                {
+                    $addFields: {
+                        deliveryDay: {
+                            $dateToString: {
+                                format: "%Y-%m-%d",
+                                date: "$parcel-trackings.createdAt",
+                            }
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$deliveryDay",
+                        deliveredCount: {
+                            $sum: 1
+                        }
+                    }
+                },
+
             ]
 
             const result = await parcelsCollections.aggregate(pipeline).toArray();

@@ -10,6 +10,7 @@ const { initializeApp, cert } = require("firebase-admin/app");
 
 const serviceAccount = require("./zap-shift-firebase-adminsdk.json");
 const { getAuth } = require('firebase-admin/auth');
+const { count } = require('console');
 
 initializeApp({
     credential: cert(serviceAccount)
@@ -108,6 +109,24 @@ async function run() {
             const user = await userCollection.findOne(query);
 
             if (!user || user.role !== 'admin') {
+                res.status(403).send({ message: 'Forbidden access' })
+            }
+
+            next();
+        }
+
+
+
+        // Middle ware with database access
+        // must be used after verifyFbToken middleware
+
+        const verifyRider = async (req, res, next) => {
+
+            const email = req.decoded_email;
+            const query = { email };
+            const user = await userCollection.findOne(query);
+
+            if (!user || user.role !== 'rider') {
                 res.status(403).send({ message: 'Forbidden access' })
             }
 
@@ -239,8 +258,104 @@ async function run() {
 
 
 
+        // app.get('/parcels/create-history', async (req, res) => {
+        //     const email = req.query.email;
 
-        app.get('/parcels/rider', async (req, res) => {
+        //     const pipeline = [
+        //         {
+        //             $match: {
+        //                 senderEmail: email
+        //             }
+        //         },
+        //         {
+        //             $group: {
+        //                 _id: {
+        //                     $dateToString: {
+        //                         format: "%Y-%m-%d",
+        //                         date: "$creationDate"
+        //                     }
+        //                 },
+        //                 createdCount: {
+        //                     $sum: 1
+        //                 },
+        //                 paidCount: {
+        //                     $sum: {
+        //                         $cond: [
+        //                             { $eq: ["$paymentStatus", "paid"] },
+        //                             1,
+        //                             0
+        //                         ]
+        //                     }
+        //                 },
+        //                 deliveredCount: {
+        //                     $sum: {
+        //                         $cond: [
+        //                             { $eq: ["$status", "delivered"] },
+        //                             1,
+        //                             0
+        //                         ]
+        //                     }
+        //                 }
+        //             }
+        //         },
+        //         {
+        //             $sort: {
+        //                 _id: 1
+        //             }
+        //         }
+        //     ];
+
+        //     const result = await parcelsCollections.aggregate(pipeline).toArray();
+
+        //     res.send(result);
+        // });
+
+
+
+        app.get('/parcels/create-history', async (req, res) => {
+            const email = req.query.email;
+
+            const pipeline = [
+                {
+                    $match: {
+                        senderEmail: email
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+
+                        parcelCount: {
+                            $sum: 1
+                        },
+
+                        paidCount: {
+                            $sum: {
+                                $cond: [
+                                    { $eq: ["$paymentStatus", "paid"] },
+                                    1,
+                                    0
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        parcelCount: 1,
+                        paidCount: 1
+                    }
+                }
+            ];
+
+            const result = await parcelsCollections.aggregate(pipeline).toArray();
+
+            res.send(result);
+        });
+
+
+        app.get('/parcels/rider', verifyFbToken, verifyRider, async (req, res) => {
 
             const { riderEmail, deliveryStatus } = req.query;
             const query = {};
@@ -270,8 +385,6 @@ async function run() {
             const result = await parcelsCollections.findOne(query);
             res.send(result);
         });
-
-
 
 
 
@@ -498,8 +611,42 @@ async function run() {
         })
 
 
+        // Payment cancel status
+
+        // app.patch('/payment-cancel', async (req, res) => {
+        //     const parcelId = req.query.parcel_id;
+
+        //     if (!parcelId) {
+        //         return res.status(400).send({
+        //             success: false,
+        //             message: 'Parcel ID is required'
+        //         });
+        //     }
+
+        //     const query = {
+        //         _id: new ObjectId(parcelId)
+        //     };
+
+        //     const update = {
+        //         $set: {
+        //             paymentStatus: 'unpaid',
+        //             deliveryStatus: 'payment-cancelled'
+        //         }
+        //     };
+
+        //     const result = await parcelsCollections.updateOne(query, update);
+
+        //     res.send({
+        //         success: true,
+        //         message: 'Payment cancelled successfully',
+        //         result: result
+        //     });
+        // });
+
 
         // payment related api
+
+
 
         app.get('/payments', verifyFbToken, async (req, res) => {
 
@@ -535,7 +682,7 @@ async function run() {
         })
 
 
-        app.get('/riders/delivery-per-day', async (req, res) => {
+        app.get('/riders/delivery-per-day', verifyFbToken, verifyRider, async (req, res) => {
             const email = req.query.email;
 
             const pipeline = [

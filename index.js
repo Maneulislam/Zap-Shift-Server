@@ -109,7 +109,7 @@ async function run() {
             const user = await userCollection.findOne(query);
 
             if (!user || user.role !== 'admin') {
-                res.status(403).send({ message: 'Forbidden access' })
+                return res.status(403).send({ message: 'Forbidden access' })
             }
 
             next();
@@ -127,7 +127,7 @@ async function run() {
             const user = await userCollection.findOne(query);
 
             if (!user || user.role !== 'rider') {
-                res.status(403).send({ message: 'Forbidden access' })
+                return res.status(403).send({ message: 'Forbidden access' })
             }
 
             next();
@@ -186,6 +186,7 @@ async function run() {
         app.get('/users/:email/role', async (req, res) => {
             const email = req.params.email;
             const query = { email };
+
             const user = await userCollection.findOne(query);
             res.send({ role: user?.role || 'user' })
         })
@@ -213,10 +214,24 @@ async function run() {
 
         // Parcels related API
 
+
         app.get('/parcels', async (req, res) => {
 
             const query = {};
-            const { email, deliveryStatus } = req.query;
+            const { email, deliveryStatus, search } = req.query;
+
+
+            if (search) {
+                query.$or = [
+                    { parcelName: { $regex: search, $options: 'i' } },
+                    { senderEmail: { $regex: search, $options: 'i' } },
+                    { receiverEmail: { $regex: search, $options: 'i' } },
+                    { trackingId: { $regex: search, $options: 'i' } }
+                ];
+            }
+
+
+
 
             if (email) {
                 query.senderEmail = email;
@@ -257,58 +272,6 @@ async function run() {
         });
 
 
-
-        // app.get('/parcels/create-history', async (req, res) => {
-        //     const email = req.query.email;
-
-        //     const pipeline = [
-        //         {
-        //             $match: {
-        //                 senderEmail: email
-        //             }
-        //         },
-        //         {
-        //             $group: {
-        //                 _id: {
-        //                     $dateToString: {
-        //                         format: "%Y-%m-%d",
-        //                         date: "$creationDate"
-        //                     }
-        //                 },
-        //                 createdCount: {
-        //                     $sum: 1
-        //                 },
-        //                 paidCount: {
-        //                     $sum: {
-        //                         $cond: [
-        //                             { $eq: ["$paymentStatus", "paid"] },
-        //                             1,
-        //                             0
-        //                         ]
-        //                     }
-        //                 },
-        //                 deliveredCount: {
-        //                     $sum: {
-        //                         $cond: [
-        //                             { $eq: ["$status", "delivered"] },
-        //                             1,
-        //                             0
-        //                         ]
-        //                     }
-        //                 }
-        //             }
-        //         },
-        //         {
-        //             $sort: {
-        //                 _id: 1
-        //             }
-        //         }
-        //     ];
-
-        //     const result = await parcelsCollections.aggregate(pipeline).toArray();
-
-        //     res.send(result);
-        // });
 
 
 
@@ -610,41 +573,6 @@ async function run() {
 
         })
 
-
-        // Payment cancel status
-
-        // app.patch('/payment-cancel', async (req, res) => {
-        //     const parcelId = req.query.parcel_id;
-
-        //     if (!parcelId) {
-        //         return res.status(400).send({
-        //             success: false,
-        //             message: 'Parcel ID is required'
-        //         });
-        //     }
-
-        //     const query = {
-        //         _id: new ObjectId(parcelId)
-        //     };
-
-        //     const update = {
-        //         $set: {
-        //             paymentStatus: 'unpaid',
-        //             deliveryStatus: 'payment-cancelled'
-        //         }
-        //     };
-
-        //     const result = await parcelsCollections.updateOne(query, update);
-
-        //     res.send({
-        //         success: true,
-        //         message: 'Payment cancelled successfully',
-        //         result: result
-        //     });
-        // });
-
-
-        // payment related api
 
 
 

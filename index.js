@@ -210,6 +210,30 @@ async function run() {
         })
 
 
+        app.get('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await userCollection.findOne(query);
+            res.send(result);
+        });
+
+
+        app.patch('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const updatedData = req.body;
+
+            delete updatedData._id;
+
+            const filter = { email: email };
+            const updateDoc = {
+                $set: updatedData,
+            };
+
+            const result = await userCollection.updateOne(filter, updateDoc, { upsert: true });
+            res.send(result);
+        });
+
+
 
 
         // Parcels related API

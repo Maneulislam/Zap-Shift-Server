@@ -204,13 +204,13 @@ async function run() {
                 ]
             }
 
-            const cursor = userCollection.find(query).sort({ createdAt: -1 }).limit(5);
+            const cursor = userCollection.find(query).sort({ createdAt: -1 });
             const result = await cursor.toArray();
             res.send(result);
         })
 
 
-        app.get('/users/:email', async (req, res) => {
+        app.get('/users/:email', verifyFbToken, async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const result = await userCollection.findOne(query);
@@ -218,7 +218,7 @@ async function run() {
         });
 
 
-        app.patch('/users/:email', async (req, res) => {
+        app.patch('/users/:email', verifyFbToken, async (req, res) => {
             const email = req.params.email;
             const updatedData = req.body;
 

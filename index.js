@@ -565,7 +565,6 @@ async function run() {
                     parcelId: session.metadata.parcelId,
                     currency: session.currency,
                     parcelName: session.metadata.parcelName,
-                    transactionId: session.payment_intent,
                     paymentStatus: session.payment_status,
                     paidAt: new Date(),
                     trackingId: trackingId,

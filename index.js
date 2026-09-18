@@ -6,17 +6,15 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 3000
 const stripe = require('stripe')(process.env.STRIPE_SECRET);
 const crypto = require("crypto");
-const { initializeApp, cert } = require("firebase-admin/app");
 
-const serviceAccount = require("./zap-shift-firebase-adminsdk.json");
-const { getAuth } = require('firebase-admin/auth');
-const { count } = require('console');
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+
+const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIAL);
 
 initializeApp({
     credential: cert(serviceAccount)
 });
-
-
 
 const generateTrackingId = () => {
     const date = new Date();

@@ -778,14 +778,31 @@ async function run() {
         // await client.close();
     }
 }
-run().catch(console.dir);
 
 
 
 
 app.get('/', (req, res) => {
     res.send('Zap is Shifting...')
-})
+});
 
+let serverReady;
 
-module.exports = app;
+const handler = async (req, res) => {
+    try {
+        if (!serverReady) {
+            serverReady = run();
+        }
+
+        await serverReady;
+
+        app(req, res);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({
+            message: 'Server initialization failed'
+        });
+    }
+};
+
+module.exports = handler;

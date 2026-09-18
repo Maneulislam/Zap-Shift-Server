@@ -53,14 +53,12 @@ const verifyFbToken = async (req, res, next) => {
 
         const decoded = await getAuth().verifyIdToken(tokenId);
 
-        console.log("decoded token", decoded);
 
         req.decoded_email = decoded.email;
 
         next();
     }
     catch (error) {
-        console.log(error);
 
         return res.status(401).send({ message: 'Unauthorized access' });
     }
@@ -524,7 +522,6 @@ async function run() {
 
 
             const session = await stripe.checkout.sessions.retrieve(sessionId);
-            console.log("Session retrieve", session);
 
 
             // Duplicate payment off
@@ -605,7 +602,6 @@ async function run() {
             const email = req.query.email;
             const query = {};
 
-            console.log("Headers", req.headers);
 
             if (email) {
                 query.customerEmail = email;
